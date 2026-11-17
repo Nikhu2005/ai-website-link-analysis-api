@@ -104,12 +104,61 @@ Response shape (abridged):
                         "business_types": [], "customer_profiles": [], "geographic_focus": "",
                         "customer_needs": [], "customer_interests": [], "recommended_marketing_segments": []}
   },
-  "meta": {"provider": "gemini", "model": "gemini-2.5-flash-lite", "cached": false,
-           "content_chars_sent": 9000, "note": "..."}
+  "meta": {"provider": "gemini", "model": "gemini-3.5-flash-lite", "cached": false,
+           "content_chars_sent": 6707, "note": "..."}
 }
 ```
 
-> TODO before submitting: paste 1-2 REAL responses here from your own runs and add screenshots/logs.
+### Real sample run
+
+Request: `{"url": "https://www.kitcoek.in/"}` (a public college website). Output below is abridged
+(first item of each list); the real response has 3 competitors, 5 search queries and 5 services.
+
+```json
+{
+  "success": true,
+  "website": "https://www.kitcoek.in/",
+  "brand": {
+    "name": "KIT'S College Of Engineering (Autonomous)",
+    "category": "Higher Education / Engineering College",
+    "summary": "KIT'S College Of Engineering (Autonomous) in Kolhapur offers undergraduate, postgraduate, and Ph.D. engineering programs with industry-integrated curriculum, strong placement records, and state-of-the-art infrastructure."
+  },
+  "analysis": {
+    "competitor_analysis": {
+      "competitors": [
+        {"name": "Walchand College of Engineering, Sangli", "main_service": "Engineering Education",
+         "target_market": "Engineering aspirants in Maharashtra",
+         "strengths": ["Autonomous status", "Strong alumni network", "Legacy brand"],
+         "weaknesses": ["Older infrastructure in parts", "High cut-off competition"],
+         "source": "ai_suggested"}
+      ]
+    },
+    "target_search_queries": [
+      {"query": "top ranked engineering college in Kolhapur", "platforms": ["Google"],
+       "intent": "Informational / Navigational",
+       "target_audience": "Prospective engineering students and parents"}
+    ],
+    "seo_improvements": {
+      "primary_keyword": "Top Ranked Engineering College in Kolhapur",
+      "secondary_keywords": ["KIT College of Engineering autonomous", "BTech admissions Kolhapur"]
+    },
+    "top_services": [
+      {"name": "Undergraduate Engineering Programs (B.Tech / B.E.)",
+       "target_customer": "High school graduates (12th grade pass-outs)", "basis": "from_website"}
+    ],
+    "target_audience": {
+      "primary_audience": ["High school graduates seeking engineering admissions"],
+      "geographic_focus": "Kolhapur, Sangli, Satara, Ratnagiri, and broader Maharashtra, India"
+    }
+  },
+  "meta": {"provider": "gemini", "model": "gemini-3.5-flash-lite", "cached": false, "content_chars_sent": 6707}
+}
+```
+
+Note: competitor strengths/weaknesses and SEO suggestions are model-generated and unverified. They are
+labelled `ai_suggested`; review them before acting on them.
+
+> Screenshots of the Swagger UI (`/docs`) runs are in the `docs/` folder (add them before submitting).
 
 ### Errors
 
@@ -146,37 +195,43 @@ Always `{"success": false, "error": "<code>", "message": "..."}`
 
 ## LLM platform and model research
 
-Prices are USD per 1M tokens, standard (non-batch) tier, short context. **Sourced from third-party pricing
-trackers and news pages dated Oct 2026; I could not open the official pricing pages from my build environment,
-so re-verify on the official pages before relying on them:**
+Prices are USD per 1M tokens, standard (non-batch) tier, short context. **They come from third-party pricing
+trackers and news pages dated Oct 2026 and have not been checked against the official pricing pages.
+Verify them there before relying on them:**
 [Gemini](https://ai.google.dev/gemini-api/docs/pricing) ·
 [OpenAI](https://platform.openai.com/docs/pricing) ·
 [Anthropic](https://docs.claude.com/en/docs/about-claude/pricing).
 
 | Provider | Model | Input | Output | Context | JSON support | Notes |
 |---|---|---|---|---|---|---|
-| Google | `gemini-2.5-flash-lite` | $0.10 | $0.40 | 1M | native (`responseMimeType`) | cheapest; free tier for dev |
-| Anthropic | `claude-haiku-5-5` | $0.10 (≤100k prompt) | $0.50 | 1M | prompted JSON + validation | listed price jump above 100k tokens |
-| OpenAI | `gpt-5-mini` | $0.25 | $2.00 | 400K | native (`json_object`) | reasoning model, pricier output |
+| Google | `gemini-3.5-flash-lite` (default) | $0.30 | $2.50 | 1M | native (`responseMimeType`) | used for the sample run; works with a standard AI Studio key |
+| Google | `gemini-2.5-flash-lite` | $0.10 | $0.40 | 1M | native | returned HTTP 404 for new API keys in my testing, so not usable |
+| Anthropic | `claude-haiku-5-5` | $0.10 (prompts ≤100k) | $0.50 | 1M | prompted JSON + validation | rates rise above 100k-token prompts |
+| OpenAI | `gpt-5-mini` | $0.25 | $2.00 | 400K | native (`json_object`) | reasoning model; output is pricier |
 | OpenAI | `gpt-4o-mini` (older) | $0.15 | $0.60 | 128K | native | older generation, for reference |
 
 ### Estimated cost per analysis
 
-Assumption (estimate, not measured): ~4,000 input tokens (≤12,000 chars of site text + prompt) and ~1,800 output tokens.
+Estimate, not measured: ~4,000 input tokens (up to 12,000 characters of site text plus the prompt) and
+~1,800 output tokens. The sample run sent 6,707 characters of content, so it was below this.
 
 | Model | Est. cost / analysis |
 |---|---|
-| gemini-2.5-flash-lite | ~$0.0011 |
+| gemini-3.5-flash-lite | ~$0.006 |
 | claude-haiku-5-5 | ~$0.0013 |
 | gpt-4o-mini | ~$0.0017 |
 | gpt-5-mini | ~$0.0046 (+ any reasoning tokens) |
 
 ### Recommendation
 
-- **Primary: `gemini-3.5-flash-lite`** (default; replaces `gemini-2.5-flash-lite`, which is retired for new keys). Lowest cost, large context, native JSON mode, and a free tier that makes development and testing cost nothing. Prices below were not re-checked for the replacement model.
-- **Fallback: `claude-haiku-5-5`.** Similar price class; a reasonable upgrade if the primary's analysis quality proves too shallow.
-- **Balancing accuracy/speed/cost:** use the cheap model by default; cleaning and capping the input keeps token use low; the cache avoids repeat calls.
-- **What is NOT measured:** accuracy and latency. I did not benchmark the models against each other, so I make no accuracy claim beyond published pricing and capabilities. Swap models with `LLM_MODEL` and compare on your own sample sites.
+- **Primary (default): `gemini-3.5-flash-lite`.** It is the model I actually ran and tested. It has native JSON
+  output mode, a 1M-token context window and works with a standard Google AI Studio key. It is **not** the cheapest option here.
+- **Lower cost at scale: `claude-haiku-5-5`.** By listed price it is roughly 4x cheaper per analysis, mostly because of its lower
+  output price. I have not benchmarked its quality against Gemini on this task, so I would test it on a few sample sites before switching.
+- **Balancing accuracy, speed and cost:** start with the default for quality and reliability, reduce cost with input cleaning and
+  caching, and move to the cheaper model if volume grows and quality tests pass. Switch models with `LLM_PROVIDER` / `LLM_MODEL`.
+- **Not measured:** accuracy and latency. I did not benchmark the models against each other, so these recommendations rest on
+  published pricing and capabilities and on one tested run.
 
 ### Cost optimisation implemented
 
